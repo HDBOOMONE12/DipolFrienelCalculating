@@ -2,16 +2,27 @@ package Artem_Pupyshev;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.Setter;
 
-@Getter //Сгенерировать все геттеры
-@AllArgsConstructor // Сгенерировать конструктор со всеми параметрами
-
+@AllArgsConstructor
+@Getter
+@Setter
 public class Ray {
 
-    private final double I; // Интенсивность луча
-    private final double ANGLE_FROM_VERTICAL; // Угол наклона луча в градусах
+    private int currentLayerNumber;
+    // Слой в котором находится луч в данный момент.
+    // Принимает значения от [1,4]. Цифра соответствует номеру слоя.
 
+
+    private int verticalDirection; //Куда направлен луч(Вверх или Вниз).
+    // 1 - Вверх, -2 - Вниз
+
+
+    private double I;
+    //Интенсивность луча в данный момент времени
+
+    private double direction;
+    // Угол под которым он идет в данный момент
 
 
 }
-
