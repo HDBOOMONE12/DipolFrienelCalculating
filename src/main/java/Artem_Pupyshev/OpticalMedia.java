@@ -6,8 +6,8 @@ import lombok.Getter;
 
 public class OpticalMedia {
     // Показатели преломления слоев
-    private final double N4 = 2; // Среда вне
-    private final double N3 = 3; // Верхний слой
-    private final double N2 = 4; // Средний слой
-    private final double N1 = 5; // Нижний слой
+    public static final double N4 = 2; // Среда вне
+    public static final double N3 = 3; // Верхний слой
+    public static final double N2 = 4; // Средний слой
+    public static final double N1 = 5; // Нижний слой
 }

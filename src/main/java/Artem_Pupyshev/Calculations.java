@@ -11,6 +11,9 @@ public class Calculations {
 
     DipolChar dipolChar; // Наш диполь
 
+    private final double IO = calculateInitialIntensity(0); //Todo
+    private final double FROM_PRIMARY = 0.001;
+
     public Calculations(int N, double I0, double TILT_ANGLE) {
         this.N = N;
         dipolChar = new DipolChar(I0, TILT_ANGLE);
@@ -43,7 +46,7 @@ public class Calculations {
 
     //Считаем направление диполя по вертикали
     private int calculateVerticalDirection(double angleFromVertical) {
-        return angleFromVertical < Math.PI ? 1 : -2;
+        return angleFromVertical < Math.PI/2 ? 1 : -2;
 
     }
 
@@ -52,51 +55,99 @@ public class Calculations {
         return verticalDirection == 1 ? 1 : -2;
     }
 
-
-    public void calculateSumIntensity(Ray ray) {
+    //Рассчеты если наш луч идет вверх
+    public List<Ray> calculateUpwardRay(Ray ray) {
 
         //Контейнеры для производных лучей
-        List<Ray> firstUp = new ArrayList<>(5);  // 4 номер (слой +1)
-        List<Ray> firstDown = new ArrayList<>(5); // 1 номер (слой -2)
-        List<Ray> secondUp = new ArrayList<>(5); //3 номер
-        List<Ray> secondDown = new ArrayList<>(5); //0 номер
-        List<Ray> thirdUp = new ArrayList<>(5); // 2 номер
-        List<Ray> thirdDown = new ArrayList<>(5); // -1 номер
+        List<Ray> derivedRays = new ArrayList<>();
 
-        if (ray.getVerticalDirection() == 1) {
-            while (ray.getCurrentLayerNumber() != 4) {
-                double Rp = calculateEnergyReflectionFactor
-                        (ray.getDirection(), ray.getCurrentLayerNumber(), ray.getCurrentLayerNumber() + 1);
-                double Tp = calculateEnergyTransmittanceFactor(Rp);
-                int contNumber = ray.getCurrentLayerNumber() - 2; // Если луч идет вверх, то производный луч идет вниз,
-                // а значит надо вычитать 2
 
-                switch (contNumber) {  //Луч идет вверх, а значит все производные будут идти вниз
-                    case 1:
-                        firstDown.add(new Ray(ray.getCurrentLayerNumber(), -2, ray.getI() * Rp, ray.getDirection()));
-                        break;
+        while (ray.getCurrentLayerNumber() != 4) {
+            //Рассчитываем Энергетические коэффициенты
+            double Rp = calculateEnergyReflectionFactor
+                    (ray.getDirection(), ray.getRefractiveIndex(ray.getCurrentLayerNumber()), ray.getRefractiveIndex(ray.getCurrentLayerNumber() + 1));
+            double Tp = calculateEnergyTransmittanceFactor(Rp);
 
-                    case 0:
-                        secondDown.add(new Ray(ray.getCurrentLayerNumber(), -2, ray.getI() * Rp, ray.getDirection()));
-                        break;
-
-                    case -1:
-                        thirdDown.add(new Ray(ray.getCurrentLayerNumber(), -2, ray.getI() * Rp, ray.getDirection()));
-                        break;
-
-                }
-                ray.setI(ray.getI() * Tp);
-                ray.setDirection(calculateSnellAngle
-                        (ray.getDirection(), ray.getCurrentLayerNumber(), ray.getCurrentLayerNumber() + 1));
-                ray.setCurrentLayerNumber(ray.getCurrentLayerNumber() + 1);
+            //Делаем проверку на угол полного внутреннего отражения
+            if (Tp == 0 || ray.getI()<this.IO*FROM_PRIMARY){
+                return null;
             }
 
-        } else if (ray.getVerticalDirection() == -2) {
-            while (ray.getCurrentLayerNumber() != 4) {
+            //Добавляем производные лучи
+            derivedRays.add
+                    (new Ray(ray.getCurrentLayerNumber(), -2, ray.getI() * Rp, ray.getDirection()));
 
-            }
+            //Меняем характеристики нашего начального луча
+            ray.setI(ray.getI() * Tp);
+            ray.setDirection
+                    (calculateSnellAngle(ray.getDirection(), ray.getRefractiveIndex(ray.getCurrentLayerNumber()), ray.getRefractiveIndex(ray.getCurrentLayerNumber() + 1)));
+            ray.setCurrentLayerNumber(ray.getCurrentLayerNumber() + 1);
+
+
         }
+        return derivedRays;
 
+    }
+
+    public List<Ray> calculateDownwardRay(Ray ray) {
+        //Пересчитываем углы(т.к угол от вертикали не равен углу падения)
+        ray.setDirection(Math.PI - ray.getDirection());
+
+        //Контейнеры для производных лучей
+        List<Ray> derivedRays = new ArrayList<>();
+
+        while (ray.getCurrentLayerNumber() != 0) {
+
+            if (ray.getCurrentLayerNumber() == 1) {
+                derivedRays.add(ray);
+                break;
+            }
+
+            //Рассчитываем Энергетические коэффициенты
+            double Rp = calculateEnergyReflectionFactor
+                    (ray.getDirection(), ray.getRefractiveIndex(ray.getCurrentLayerNumber()),
+                            ray.getRefractiveIndex(ray.getCurrentLayerNumber() - 1));
+            ;
+            double Tp = calculateEnergyTransmittanceFactor(Rp);
+
+            //Делаем проверку на угол полного внутреннего отражения и минимальную энергию луча
+            if (Tp == 0 || ray.getI()<this.IO*FROM_PRIMARY){
+                return null;
+            }
+
+
+            //Добавляем производные лучи
+            derivedRays.add
+                    (new Ray(ray.getCurrentLayerNumber(), 1, ray.getI() * Rp, ray.getDirection()));
+
+            //Меняем характеристики нашего начального луча
+            ray.setI(ray.getI() * Tp);
+            ray.setDirection
+                    (calculateSnellAngle(ray.getDirection(), ray.getRefractiveIndex(ray.getCurrentLayerNumber()),
+                            ray.getRefractiveIndex(ray.getCurrentLayerNumber() - 1)));
+            ray.setCurrentLayerNumber(ray.getCurrentLayerNumber() - 1);
+        }
+        return derivedRays;
+    }
+
+    public double calculateSumIntensity(){
+            double Isum = 0;
+            double angleFromVertical = -Math.PI/2;
+            for (int i = 0; i < N; i++) {
+                Ray ray = new Ray(2,calculateVerticalDirection(angleFromVertical),
+                        calculateInitialIntensity(angleFromVertical), angleFromVertical);
+                while(true){
+                    if (ray.getVerticalDirection()==1){
+
+                    }
+                    if (ray.getVerticalDirection()==(-2)){
+
+                    }
+                }
+
+
+                angleFromVertical += dAngle;
+            }
 
     }
 
